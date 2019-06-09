@@ -23,7 +23,7 @@ class SwitchController:
             msg.match = of.ofp_match.from_packet(packet, event.port)
             msg.idle_timeout = 10
             msg.hard_timeout = 30
-            msg.actions.append(of.ofp_action_output(port=self.main_controller.ports[2][5]))
+            msg.actions.append(of.ofp_action_output(port=3))
             msg.data = event.ofp
             self.connection.send(msg)
 
