@@ -5,6 +5,7 @@ import pox.forwarding.l2_learning
 from pox.lib.recoco import Timer
 from pox.lib.util import dpid_to_str
 from extensions.switch import SwitchController
+import networkx as nx
 
 log = core.getLogger()
 
@@ -17,6 +18,7 @@ class Controller:
     def __init__(self):
         self.connections = set()
         self.switches = []
+        self.topology = nx.Graph()
 
         # Esperando que los modulos openflow y openflow_discovery esten listos
         core.call_when_ready(self.startup, ('openflow', 'openflow_discovery'))
@@ -29,14 +31,14 @@ class Controller:
         """
         core.openflow.addListeners(self)
         core.openflow_discovery.addListeners(self)
-        log.info('Controller initialized')
+        # log.info('Controller initialized')
 
     def _handle_ConnectionUp(self, event):
         """
         Esta funcion es llamada cada vez que un nuevo switch establece conexion
         Se encarga de crear un nuevo switch controller para manejar los eventos de cada switch
         """
-        log.info("Switch %s has come up.", dpid_to_str(event.dpid))
+        # log.info("Switch %s has come up.", dpid_to_str(event.dpid))
         if (event.connection not in self.connections):
             self.connections.add(event.connection)
             sw = SwitchController(event.dpid, event.connection)
@@ -48,7 +50,7 @@ class Controller:
         Aca es donde se va a implementar el firewall unicamente para paquetes UDP con un mismo
         destino que excedan un limite predefinido por unidad de tiempo.
         """
-        log.info("Nuevo paquete recibido")
+        # log.info("Nuevo paquete recibido")
         frame = event.parsed
 
         if frame.type == frame.IP_TYPE:
@@ -59,7 +61,7 @@ class Controller:
                 self.paquetes_por_destino[packet.dstip] += 1
 
                 if self.paquetes_por_destino[packet.dstip] >= self.MAX_UDP_PACKETS:
-                    log.info("Paquete bloqueado desde " + str(packet.dstip))
+                    # log.info("Paquete bloqueado desde " + str(packet.dstip))
                     event.halt = True
                 Timer(self.TIMER, self.reiniciar_bloqueos)
 
@@ -71,8 +73,12 @@ class Controller:
         Esta funcion es llamada cada vez que openflow_discovery descubre un nuevo enlace
         """
         link = event.link
-        log.info("Link has been discovered from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
-                 dpid_to_str(link.dpid2), link.port2)
+
+        self.topology.add_edge(link.dpid1, link.dpid2)
+        print(self.topology.edges)
+
+        # log.info("Link has been discovered from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
+        #          dpid_to_str(link.dpid2), link.port2)
 
 
 def launch():

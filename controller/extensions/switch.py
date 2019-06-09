@@ -17,4 +17,4 @@ class SwitchController:
         y no encuentra en su tabla una regla para rutearlo
         """
         packet = event.parsed
-        log.info("Packet arrived to switch %s from %s to %s", self.dpid, packet.src, packet.dst)
+        # log.info("Packet arrived to switch %s from %s to %s", self.dpid, packet.src, packet.dst)
