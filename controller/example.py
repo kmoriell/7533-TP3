@@ -6,6 +6,7 @@ from pox.lib.recoco import Timer
 from pox.lib.util import dpid_to_str
 from extensions.switch import SwitchController
 import networkx as nx
+from pox.host_tracker.host_tracker import host_tracker
 
 log = core.getLogger()
 
@@ -20,6 +21,7 @@ class Controller:
         self.switches = []
         self.topology = nx.Graph()
         self.ports = {}
+        self.host_tracker = host_tracker()
 
         # Esperando que los modulos openflow y openflow_discovery esten listos
         core.call_when_ready(self.startup, ('openflow', 'openflow_discovery'))
@@ -66,6 +68,21 @@ class Controller:
                     event.halt = True
                 Timer(self.TIMER, self.reiniciar_bloqueos)
 
+        self.host_tracker._handle_openflow_PacketIn(event)
+
+
+        for eth_addr, mac_entry in self.host_tracker.entryByMAC.iteritems():
+            # { dest_dpid: { source_dpid: dest_port } }
+            if not self.ports.get(mac_entry.dpid):
+                self.ports[mac_entry.dpid] = {}
+            self.ports[mac_entry.dpid][eth_addr.to_str()] = mac_entry.port
+
+            self.topology.add_edge(eth_addr.to_str(), mac_entry.dpid)
+
+        print '--------------------------------'
+        print self.ports
+        print list(self.topology.edges)
+
     def reiniciar_bloqueos(self):
         self.paquetes_por_destino.clear()
 
@@ -92,6 +109,10 @@ class Controller:
         # log.info("Link has been discovered from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
         #          dpid_to_str(link.dpid2), link.port2)
 
+        print '--------------------------------'
+        print self.ports
+        print list(self.topology.edges)
+
 
 def launch():
     # Inicializando el modulo openflow_discovery
@@ -99,11 +120,3 @@ def launch():
 
     # Registrando el Controller en pox.core para que sea ejecutado
     core.registerNew(Controller)
-
-    """
-    Corriendo Spanning Tree Protocol y el modulo l2_learning.
-    No queremos correrlos para la resolucion del TP.
-    Aqui lo hacemos a modo de ejemplo
-    """
-    # pox.openflow.spanning_tree.launch()
-    # pox.forwarding.l2_learning.launch()
