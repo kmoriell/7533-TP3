@@ -1,3 +1,10 @@
+## Levantar ambiente:
+
+* `docker-compose up`
+* `sh pox.sh`
+* `sh mininet.sh -h <alto_de_fat_tree>`
+
+
 # 75.43 - Introducción a los Sistemas Distribuidos
 ## Trabajo Práctico 3 - SDN
 
