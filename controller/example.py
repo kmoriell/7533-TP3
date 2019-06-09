@@ -19,6 +19,7 @@ class Controller:
         self.connections = set()
         self.switches = []
         self.topology = nx.Graph()
+        self.ports = {}
 
         # Esperando que los modulos openflow y openflow_discovery esten listos
         core.call_when_ready(self.startup, ('openflow', 'openflow_discovery'))
@@ -41,7 +42,7 @@ class Controller:
         # log.info("Switch %s has come up.", dpid_to_str(event.dpid))
         if (event.connection not in self.connections):
             self.connections.add(event.connection)
-            sw = SwitchController(event.dpid, event.connection)
+            sw = SwitchController(event.dpid, event.connection, self)
             self.switches.append(sw)
 
     def _handle_PacketIn(self, event):
@@ -75,7 +76,18 @@ class Controller:
         link = event.link
 
         self.topology.add_edge(link.dpid1, link.dpid2)
-        print(self.topology.edges)
+
+        # { source_dpid: { dest_dpid: source_port } }
+
+        if not self.ports.get(link.dpid1):
+            self.ports[link.dpid1] = {}
+        self.ports[link.dpid1][link.dpid2] = link.port1
+
+        # { dest_dpid: { source_dpid: dest_port } }
+
+        if not self.ports.get(link.dpid2):
+            self.ports[link.dpid2] = {}
+        self.ports[link.dpid2][link.dpid1] = link.port2
 
         # log.info("Link has been discovered from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
         #          dpid_to_str(link.dpid2), link.port2)
@@ -93,5 +105,5 @@ def launch():
     No queremos correrlos para la resolucion del TP.
     Aqui lo hacemos a modo de ejemplo
     """
-    pox.openflow.spanning_tree.launch()
-    pox.forwarding.l2_learning.launch()
+    # pox.openflow.spanning_tree.launch()
+    # pox.forwarding.l2_learning.launch()
