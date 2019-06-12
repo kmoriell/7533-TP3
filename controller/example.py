@@ -53,23 +53,22 @@ class Controller:
         Aca es donde se va a implementar el firewall unicamente para paquetes UDP con un mismo
         destino que excedan un limite predefinido por unidad de tiempo.
         """
-        # log.info("Nuevo paquete recibido")
-        frame = event.parsed
-
-        if frame.type == frame.IP_TYPE:
-            packet = frame.payload
-            if packet.protocol == packet.ICMP_PROTOCOL or packet.protocol == packet.UDP_PROTOCOL:
-                if not packet.dstip in self.paquetes_por_destino.keys():
-                    self.paquetes_por_destino[packet.dstip] = 0
-                self.paquetes_por_destino[packet.dstip] += 1
-
-                if self.paquetes_por_destino[packet.dstip] >= self.MAX_UDP_PACKETS:
-                    # log.info("Paquete bloqueado desde " + str(packet.dstip))
-                    event.halt = True
-                Timer(self.TIMER, self.reiniciar_bloqueos)
+        log.info("Nuevo paquete recibido")
+        # frame = event.parsed
+        #
+        # if frame.type == frame.IP_TYPE:
+        #     packet = frame.payload
+        #     if packet.protocol == packet.ICMP_PROTOCOL or packet.protocol == packet.UDP_PROTOCOL:
+        #         if not packet.dstip in self.paquetes_por_destino.keys():
+        #             self.paquetes_por_destino[packet.dstip] = 0
+        #         self.paquetes_por_destino[packet.dstip] += 1
+        #
+        #         if self.paquetes_por_destino[packet.dstip] >= self.MAX_UDP_PACKETS:
+        #             # log.info("Paquete bloqueado desde " + str(packet.dstip))
+        #             event.halt = True
+        #         Timer(self.TIMER, self.reiniciar_bloqueos)
 
         self.host_tracker._handle_openflow_PacketIn(event)
-
 
         for eth_addr, mac_entry in self.host_tracker.entryByMAC.iteritems():
             # { dest_dpid: { source_dpid: dest_port } }
@@ -78,10 +77,6 @@ class Controller:
             self.ports[mac_entry.dpid][eth_addr.to_str()] = mac_entry.port
 
             self.topology.add_edge(eth_addr.to_str(), mac_entry.dpid)
-
-        print '--------------------------------'
-        print self.ports
-        print list(self.topology.edges)
 
     def reiniciar_bloqueos(self):
         self.paquetes_por_destino.clear()
@@ -106,12 +101,8 @@ class Controller:
             self.ports[link.dpid2] = {}
         self.ports[link.dpid2][link.dpid1] = link.port2
 
-        # log.info("Link has been discovered from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
-        #          dpid_to_str(link.dpid2), link.port2)
-
-        print '--------------------------------'
-        print self.ports
-        print list(self.topology.edges)
+        log.info("Link has been discovered from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
+                 dpid_to_str(link.dpid2), link.port2)
 
 
 def launch():
