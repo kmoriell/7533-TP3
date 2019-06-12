@@ -55,11 +55,18 @@ class SwitchController:
         if _10tupla not in self.TCAM.keys():        
             log.info("NO esta en TCAM")
             try:
-                path = nx.dijkstra_path(
+                paths = list(nx.all_shortest_paths(
                     self.main_controller.topology,
                     packet.src.to_str(),
                     packet.dst.to_str()
-                )
+                ))
+                # path = paths[hash(_10tupla) % len(paths)]
+                #
+                # hacer que se tomen caminos distintos asi rompe pingall por motivos misteriosos
+                # paths[0] funciona, asi que el orden no pareciera variar. Idealmente
+                # se deberia ir directo a la solucion definitiva en que se recuerde que camino se decidio
+                # para cada flujo y load-balancear
+                path = paths[0]
                 log.info("path: " + str(path))
                 port_out = self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
 
