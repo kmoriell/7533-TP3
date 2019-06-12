@@ -9,7 +9,7 @@ class _10Tuple:
     tcp_src = None
     tcp_dst = None
     def __init__(self, port_in, eth_src, eth_dst, eth_type, ip_src, ip_dst, ip_proto, tcp_src, tcp_dst):
-        self.port_in = None # port_in
+        self.port_in = port_in
         self.eth_src = eth_src
         self.eth_dst = eth_dst
         self.eth_type = eth_type

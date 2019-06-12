@@ -25,7 +25,7 @@ class SwitchController:
         packet = event.parsed
 
         log.info("Packet arrived to switch %s from %s to %s", self.dpid, packet.src, packet.dst)
-        port = self.dpid #self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
+        port_in = event.ofp.in_port
 
         _10tupla = None
         log.info('PKT: ' + pkt.ETHERNET.ethernet.getNameForType(packet.type))        
@@ -34,14 +34,14 @@ class SwitchController:
             if packet.payload == packet.ARP_TYPE:
                 log.info("ARP packet")
             elif packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-                _10tupla = _10Tuple(port, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport) 
+                _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
             else:
-                _10tupla = _10Tuple(port, packet.src, packet.dst, 0x800, None, None, None, None, None) 
+                _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x800, None, None, None, None, None)
         elif packet.type == packet.IPV6_TYPE:
             #if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
             ipv6 = packet.payload
             if ipv6.payload_type == ipv6.ICMP6_PROTOCOL:
-                _10tupla = _10Tuple(port, packet.src, packet.dst, 0x86dd, packet.payload.srcip, packet.payload.dstip, 58, None, None) 
+                _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x86dd, packet.payload.srcip, packet.payload.dstip, 58, None, None)
             log.info(str(ipv6))
 
         #except:
@@ -60,7 +60,8 @@ class SwitchController:
                     packet.src.to_str(),
                     packet.dst.to_str()
                 )
-                log.info("path: " + str(path))            
+                log.info("path: " + str(path))
+                port_out = self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
 
                 # Trafico hacia ultimo elemento de path debe ser enviado por puerto definido en port
                 msg = of.ofp_flow_mod()
@@ -78,14 +79,14 @@ class SwitchController:
 
                     msg.match.nw_src = packet.payload.srcip 
                     msg.match.nw_dst = packet.payload.dstip
-                    _10tupla = _10Tuple(port, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport) 
+                    _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
                 else:
-                    _10tupla = _10Tuple(port, packet.src, packet.dst, 0x800, None, None, None, None, None) 
+                    _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x800, None, None, None, None, None)
                 #elif packet.payload.protocol == packet.payload.UDP_PROTOCOL:
                 self.TCAM[_10tupla] = path
-                msg.actions.append(of.ofp_action_output(port = port))
+                msg.actions.append(of.ofp_action_output(port = port_out))
                 event.connection.send(msg)
-                log.info("Installing %s.%i -> %s.%i" %(packet.src, event.ofp.in_port, packet.dst, port))            
+                log.info("Installing %s.%i -> %s.%i" %(packet.src, event.ofp.in_port, packet.dst, port_out))
             except nx.NetworkXNoPath:
                 pass
         else:
