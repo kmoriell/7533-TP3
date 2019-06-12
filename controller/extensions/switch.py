@@ -28,17 +28,21 @@ class SwitchController:
         port = self.dpid #self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
 
         _10tupla = None
-        log.info('PKT: ' + pkt.ETHERNET.ethernet.getNameForType(packet.type))
-        if pkt.ETHERNET.ethernet.getNameForType(packet.type) != 'IPV6':                
+        log.info('PKT: ' + pkt.ETHERNET.ethernet.getNameForType(packet.type))        
+        if packet.type != packet.IPV6_TYPE:
         #try:
-            if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-
+            if packet.payload == packet.ARP_TYPE:
+                log.info("ARP packet")
+            elif packet.payload.protocol == packet.payload.TCP_PROTOCOL:
                 _10tupla = _10Tuple(port, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport) 
             else:
                 _10tupla = _10Tuple(port, packet.src, packet.dst, 0x800, None, None, None, None, None) 
-        else:
+        elif packet.type == packet.IPV6_TYPE:
             #if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-            log.info(pkt.ETHERNET.ethernet.getNameForType(packet.type))
+            ipv6 = packet.payload
+            if ipv6.payload_type == ipv6.ICMP6_PROTOCOL:
+                _10tupla = _10Tuple(port, packet.src, packet.dst, 0x86dd, packet.payload.srcip, packet.payload.dstip, 58, None, None) 
+            log.info(str(ipv6))
 
         #except:
         #    pass
