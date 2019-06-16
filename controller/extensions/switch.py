@@ -17,14 +17,15 @@ class SwitchController:
         self.connection.addListeners(self)
         self.main_controller = main_controller
 
-    def broadcast(self):
-        log.info("Broadcasting packet")
-        msg = of.ofp.packet_out()
-        msg.buffer_id = self.event.ofp.buffer_id
-        msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
-        msg.data = self.event.ofp
-        msg.in_port = self.event.port
-        self.event.connection.send(msg)
+    # TODO: probar o borrar esto
+    # def broadcast(self):
+    #     log.info("Broadcasting packet")
+    #     msg = of.ofp.packet_out()
+    #     msg.buffer_id = self.event.ofp.buffer_id
+    #     msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
+    #     msg.data = self.event.ofp
+    #     msg.in_port = self.event.port
+    #     self.event.connection.send(msg)
 
     def build_10_tuple(self, packet):
         _10tupla = _10Tuple()
