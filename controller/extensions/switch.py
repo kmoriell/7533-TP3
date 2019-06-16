@@ -1,7 +1,7 @@
-from pox.core import core
-import pox.openflow.libopenflow_01 as of
 import networkx as nx
-import pox.lib.packet as pkt
+import pox.openflow.libopenflow_01 as of
+from pox.core import core
+
 from _10Tuple import _10Tuple
 
 log = core.getLogger()
@@ -18,21 +18,27 @@ class SwitchController:
         self.main_controller = main_controller
 
     def build_10_tuple(self, packet):
-        _10tupla = None
-        if packet.type != packet.IPV6_TYPE:
-            if packet.payload == packet.ARP_TYPE:
-                pass
-            elif packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip,
-                                    0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
-            else:
-                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, None, None, None, None, None)
-        elif packet.type == packet.IPV6_TYPE:
-            # if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-            ipv6 = packet.payload
-            if ipv6.payload_type == ipv6.ICMP6_PROTOCOL:
-                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x86dd, packet.payload.srcip, packet.payload.dstip,
-                                    58, None, None)
+        _10tupla = _10Tuple()
+
+        _10tupla.vlan_id = None
+        _10tupla.port_in = None
+
+        _10tupla.eth_src = packet.src
+        _10tupla.eth_dst = packet.dst
+        _10tupla.eth_type = packet.type
+
+        if packet.type == packet.IP_TYPE or packet.type == packet.IPV6_TYPE:
+            ip = packet.payload
+            _10tupla.ip_src = ip.srcip
+            _10tupla.ip_dst = ip.dstip
+            protocol = ip.protocol if packet.type == packet.IP_TYPE else ip.payload_type
+            _10tupla.ip_proto = protocol
+            if protocol == ip.TCP_PROTOCOL:
+                tcp = ip.payload
+                _10tupla.ip_src = tcp.srcport
+                _10tupla.ip_dst = tcp.dstport
+        else:
+            log.info('unknown type: {}'.format(packet.type))
         return _10tupla
 
     def update_switch_table(self, path, event, _10tupla):
@@ -42,8 +48,8 @@ class SwitchController:
         msg = of.ofp_flow_mod()
         msg.data = event.ofp
         msg.buffer_id = event.ofp.buffer_id
-        msg.idle_timeout = 10
-        msg.hard_timeout = 30
+        msg.idle_timeout = 100
+        msg.hard_timeout = 300
 
         msg.match.dl_src = _10tupla.eth_src
         msg.match.dl_dst = _10tupla.eth_dst
