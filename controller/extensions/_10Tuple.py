@@ -32,5 +32,17 @@ class _10Tuple:
             self.ip_proto == other.ip_proto and
             self.tcp_dst == other.tcp_dst and
             self.tcp_src == other.tcp_src)
-        
+
+    def __str__(self):
+        return '{} {} {} {} {} {} {} {} {}'.format(
+            self.port_in,
+            self.eth_src,
+            self.eth_dst,
+            self.eth_type,
+            self.ip_src,
+            self.ip_dst,
+            self.ip_proto,
+            self.tcp_src,
+            self.tcp_dst
+        )
 

@@ -25,49 +25,30 @@ class SwitchController:
         packet = event.parsed
 
         log.info("Packet arrived to switch %s from %s to %s", self.dpid, packet.src, packet.dst)
-        port_in = event.ofp.in_port
 
         _10tupla = None
-        log.info('PKT: ' + pkt.ETHERNET.ethernet.getNameForType(packet.type))        
         if packet.type != packet.IPV6_TYPE:
-        #try:
             if packet.payload == packet.ARP_TYPE:
-                log.info("ARP packet")
+                pass
             elif packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-                _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
+                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
             else:
-                _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x800, None, None, None, None, None)
+                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, None, None, None, None, None)
         elif packet.type == packet.IPV6_TYPE:
             #if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
             ipv6 = packet.payload
             if ipv6.payload_type == ipv6.ICMP6_PROTOCOL:
-                _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x86dd, packet.payload.srcip, packet.payload.dstip, 58, None, None)
-            log.info(str(ipv6))
-
-        #except:
-        #    pass
-
-
-        log.info("_10tupla " + str(_10tupla))
-
-        log.info("TCAM keys = " + str(self.TCAM.keys()))
+                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x86dd, packet.payload.srcip, packet.payload.dstip, 58, None, None)
 
         if _10tupla not in self.TCAM.keys():        
-            log.info("NO esta en TCAM")
             try:
                 paths = list(nx.all_shortest_paths(
                     self.main_controller.topology,
                     packet.src.to_str(),
                     packet.dst.to_str()
                 ))
-                # path = paths[hash(_10tupla) % len(paths)]
-                #
-                # hacer que se tomen caminos distintos asi rompe pingall por motivos misteriosos
-                # paths[0] funciona, asi que el orden no pareciera variar. Idealmente
-                # se deberia ir directo a la solucion definitiva en que se recuerde que camino se decidio
-                # para cada flujo y load-balancear
-                path = paths[0]
-                log.info("path: " + str(path))
+                paths = [path for path in paths if self.dpid in path]
+                path = paths[hash(_10tupla) % len(paths)]
                 port_out = self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
 
                 # Trafico hacia ultimo elemento de path debe ser enviado por puerto definido en port
@@ -86,18 +67,16 @@ class SwitchController:
 
                     msg.match.nw_src = packet.payload.srcip 
                     msg.match.nw_dst = packet.payload.dstip
-                    _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
+                    _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
                 else:
-                    _10tupla = _10Tuple(port_in, packet.src, packet.dst, 0x800, None, None, None, None, None)
+                    _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, None, None, None, None, None)
                 #elif packet.payload.protocol == packet.payload.UDP_PROTOCOL:
                 self.TCAM[_10tupla] = path
                 msg.actions.append(of.ofp_action_output(port = port_out))
                 event.connection.send(msg)
-                log.info("Installing %s.%i -> %s.%i" %(packet.src, event.ofp.in_port, packet.dst, port_out))
             except nx.NetworkXNoPath:
                 pass
         else:
-            log.info("Ruta ya en TCAM")
             path = self.TCAM[_10tupla]
             msg = of.ofp_packet_out()
             msg.actions.append(of.ofp_action_output(
