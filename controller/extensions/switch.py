@@ -35,27 +35,24 @@ class SwitchController:
                                     58, None, None)
         return _10tupla
 
-    def update_switch_table(self, path, event, packet):
+    def update_switch_table(self, path, event, _10tupla):
         # update switch table entry, and retry with the new-found information
         port_out = self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
 
         msg = of.ofp_flow_mod()
         msg.data = event.ofp
-
         msg.buffer_id = event.ofp.buffer_id
-
         msg.idle_timeout = 10
         msg.hard_timeout = 30
-        msg.match.dl_src = packet.src
-        msg.match.dl_dst = packet.dst
 
-        if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-            msg.match.dl_type = 0x800  # IPv4
-            msg.match.nw_proto = 6  # TCP
-            msg.match.tp_src = packet.payload.payload.srcport
-            msg.match.tp_dst = packet.payload.payload.dstport
-            msg.match.nw_src = packet.payload.srcip
-            msg.match.nw_dst = packet.payload.dstip
+        msg.match.dl_src = _10tupla.eth_src
+        msg.match.dl_dst = _10tupla.eth_dst
+        msg.match.dl_type = _10tupla.eth_type
+        msg.match.nw_src = _10tupla.ip_src
+        msg.match.nw_dst = _10tupla.ip_dst
+        msg.match.nw_proto = _10tupla.ip_proto
+        msg.match.tp_src = _10tupla.tcp_src
+        msg.match.tp_dst = _10tupla.tcp_dst
 
         msg.actions.append(of.ofp_action_output(port=port_out))
         event.connection.send(msg)
@@ -80,10 +77,10 @@ class SwitchController:
                 ))
                 paths = [path for path in paths if self.dpid in path]
                 path = paths[hash(_10tupla) % len(paths)]
-                self.update_switch_table(path, event, packet)
+                self.update_switch_table(path, event, _10tupla)
                 self.TCAM[_10tupla] = path
             except nx.NetworkXNoPath:
                 pass
         else:
             path = self.TCAM[_10tupla]
-            self.update_switch_table(path, event, packet)
+            self.update_switch_table(path, event, _10tupla)
