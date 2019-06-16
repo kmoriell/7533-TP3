@@ -1,12 +1,12 @@
-from pox.core import core
+import networkx as nx
+import pox.forwarding.l2_learning
 import pox.openflow.discovery
 import pox.openflow.spanning_tree
-import pox.forwarding.l2_learning
-from pox.lib.recoco import Timer
-from pox.lib.util import dpid_to_str
-from extensions.switch import SwitchController
-import networkx as nx
+from pox.core import core
 from pox.host_tracker.host_tracker import host_tracker
+from pox.lib.util import dpid_to_str
+
+from extensions.switch import SwitchController
 
 log = core.getLogger()
 

@@ -1,7 +1,6 @@
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 import networkx as nx
-from pox.lib.addresses import IPAddr, EthAddr
 import pox.lib.packet as pkt
 from _10Tuple import _10Tuple
 
@@ -10,6 +9,7 @@ log = core.getLogger()
 
 class SwitchController:
     TCAM = {}
+
     def __init__(self, dpid, connection, main_controller):
         self.dpid = dpid
         self.connection = connection
@@ -31,16 +31,18 @@ class SwitchController:
             if packet.payload == packet.ARP_TYPE:
                 pass
             elif packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
+                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip,
+                                    0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
             else:
                 _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, None, None, None, None, None)
         elif packet.type == packet.IPV6_TYPE:
-            #if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
+            # if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
             ipv6 = packet.payload
             if ipv6.payload_type == ipv6.ICMP6_PROTOCOL:
-                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x86dd, packet.payload.srcip, packet.payload.dstip, 58, None, None)
+                _10tupla = _10Tuple(None, packet.src, packet.dst, 0x86dd, packet.payload.srcip, packet.payload.dstip,
+                                    58, None, None)
 
-        if _10tupla not in self.TCAM.keys():        
+        if _10tupla not in self.TCAM.keys():
             try:
                 paths = list(nx.all_shortest_paths(
                     self.main_controller.topology,
@@ -57,22 +59,23 @@ class SwitchController:
                 msg.idle_timeout = 10
                 msg.hard_timeout = 30
                 msg.match.dl_src = packet.src
-                msg.match.dl_dst = packet.dst            
+                msg.match.dl_dst = packet.dst
 
                 if packet.payload.protocol == packet.payload.TCP_PROTOCOL:
-                    msg.match.dl_type = 0x800 # IPv4        
-                    msg.match.nw_proto = 6 # TCP       
-                    msg.match.tp_src = packet.payload.payload.srcport 
+                    msg.match.dl_type = 0x800  # IPv4
+                    msg.match.nw_proto = 6  # TCP
+                    msg.match.tp_src = packet.payload.payload.srcport
                     msg.match.tp_dst = packet.payload.payload.dstport
 
-                    msg.match.nw_src = packet.payload.srcip 
+                    msg.match.nw_src = packet.payload.srcip
                     msg.match.nw_dst = packet.payload.dstip
-                    _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip, 0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
+                    _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip,
+                                        0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
                 else:
                     _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, None, None, None, None, None)
-                #elif packet.payload.protocol == packet.payload.UDP_PROTOCOL:
+                # elif packet.payload.protocol == packet.payload.UDP_PROTOCOL:
                 self.TCAM[_10tupla] = path
-                msg.actions.append(of.ofp_action_output(port = port_out))
+                msg.actions.append(of.ofp_action_output(port=port_out))
                 event.connection.send(msg)
             except nx.NetworkXNoPath:
                 pass
@@ -84,4 +87,3 @@ class SwitchController:
             ))
             msg.data = event.ofp
             event.connection.send(msg)
-
