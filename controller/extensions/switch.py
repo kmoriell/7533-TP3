@@ -17,11 +17,20 @@ class SwitchController:
         self.connection.addListeners(self)
         self.main_controller = main_controller
 
+    def broadcast(self):
+        log.info("Broadcasting packet")
+        msg = of.ofp.packet_out()
+        msg.buffer_id = self.event.ofp.buffer_id
+        msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
+        msg.data = self.event.ofp
+        msg.in_port = self.event.port
+        self.event.connection.send(msg)
+
     def build_10_tuple(self, packet):
         _10tupla = None
         if packet.type != packet.IPV6_TYPE:
             if packet.payload == packet.ARP_TYPE:
-                pass
+                self.broadcast()
             elif packet.payload.protocol == packet.payload.TCP_PROTOCOL:
                 _10tupla = _10Tuple(None, packet.src, packet.dst, 0x800, packet.payload.srcip, packet.payload.dstip,
                                     0x6, packet.payload.payload.srcport, packet.payload.payload.dstport)
@@ -62,6 +71,7 @@ class SwitchController:
         Esta funcion es llamada cada vez que el switch recibe un paquete
         y no encuentra en su tabla una regla para rutearlo
         """
+        self.event = event
         packet = event.parsed
 
         log.info("Packet arrived to switch %s from %s to %s", self.dpid, packet.src, packet.dst)
