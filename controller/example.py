@@ -81,12 +81,7 @@ class Controller:
     def reiniciar_bloqueos(self):
         self.paquetes_por_destino.clear()
 
-    def _handle_LinkEvent(self, event):
-        """
-        Esta funcion es llamada cada vez que openflow_discovery descubre un nuevo enlace
-        """
-        link = event.link
-
+    def handle_link_up(self, link):
         self.topology.add_edge(link.dpid1, link.dpid2)
 
         # { source_dpid: { dest_dpid: source_port } }
@@ -104,6 +99,28 @@ class Controller:
         log.info("Link has been discovered from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
                  dpid_to_str(link.dpid2), link.port2)
 
+    def handle_link_down(self, link):
+        try:
+            self.topology.remove_edge(link.dpid1, link.dpid2)
+
+            del self.ports[link.dpid1][link.dpid2]
+            del self.ports[link.dpid2][link.dpid1]
+
+            log.info("Link has been removed from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
+                     dpid_to_str(link.dpid2), link.port2)
+        except nx.NetworkXError:
+            pass  # ya se borro (borra 2 veces, es bidireccional, y nosotros queremos borrar una vez
+
+    def _handle_LinkEvent(self, event):
+        """
+        Esta funcion es llamada cada vez que openflow_discovery descubre un nuevo enlace
+        """
+        link = event.link
+
+        if event.added:
+            self.handle_link_up(link)
+        elif event.removed:
+            self.handle_link_down(link)
 
 def launch():
     # Inicializando el modulo openflow_discovery
