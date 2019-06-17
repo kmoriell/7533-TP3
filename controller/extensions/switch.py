@@ -3,15 +3,15 @@ import pox.openflow.libopenflow_01 as of
 from pox.core import core
 
 from _10Tuple import _10Tuple
+from TCAM import TCAM
 
 log = core.getLogger()
 
 
 class SwitchController:
-    TCAM = {}
-
     def __init__(self, dpid, connection, main_controller):
         self.dpid = dpid
+        self.tcam = TCAM()
         self.connection = connection
         # El SwitchController se agrega como handler de los eventos del switch
         self.connection.addListeners(self)
@@ -80,13 +80,12 @@ class SwitchController:
         """
         self.event = event
         packet = event.parsed
-
         log.info("Packet arrived to switch %s from %s to %s", self.dpid, packet.src, packet.dst)
 
-        _10tupla = self.build_10_tuple(packet)
-
-        if _10tupla not in self.TCAM.keys():
-            try:
+        try:
+            _10tupla = self.build_10_tuple(packet)
+            path = self.tcam.get(_10tupla)
+            if not path:
                 paths = list(nx.all_shortest_paths(
                     self.main_controller.topology,
                     packet.src.to_str(),
@@ -94,10 +93,7 @@ class SwitchController:
                 ))
                 paths = [path for path in paths if self.dpid in path]
                 path = paths[hash(_10tupla) % len(paths)]
-                self.update_switch_table(path, event, _10tupla)
-                self.TCAM[_10tupla] = path
-            except nx.NetworkXNoPath:
-                pass
-        else:
-            path = self.TCAM[_10tupla]
+                self.tcam.set(_10tupla, path)
             self.update_switch_table(path, event, _10tupla)
+        except nx.NetworkXNoPath:
+            pass
