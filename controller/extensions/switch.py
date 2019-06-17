@@ -1,7 +1,7 @@
 import networkx as nx
 import pox.openflow.libopenflow_01 as of
 from pox.core import core
-
+from random import choice
 from _10Tuple import _10Tuple
 
 log = core.getLogger()
@@ -93,7 +93,7 @@ class SwitchController:
                     packet.dst.to_str()
                 ))
                 paths = [path for path in paths if self.dpid in path]
-                path = paths[hash(_10tupla) % len(paths)]
+                path = choice(paths)
                 self.update_switch_table(path, event, _10tupla)
                 self.TCAM[_10tupla] = path
             except nx.NetworkXNoPath:
