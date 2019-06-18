@@ -15,6 +15,7 @@ class Controller:
     MAX_UDP_PACKETS = 10  # pkts/seg
     TIMER = 10  # segs
     paquetes_por_destino = dict()
+    TCAM = {}
 
     def __init__(self):
         self.connections = set()
@@ -109,7 +110,7 @@ class Controller:
             log.info("Link has been removed from %s,%s to %s,%s", dpid_to_str(link.dpid1), link.port1,
                      dpid_to_str(link.dpid2), link.port2)
         except nx.NetworkXError:
-            pass  # ya se borro (borra 2 veces, es bidireccional, y nosotros queremos borrar una vez
+            pass  # ya se borro (borra 2 veces, es bidireccional, y nosotros queremos borrar una vez)
 
     def _handle_LinkEvent(self, event):
         """

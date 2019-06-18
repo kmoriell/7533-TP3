@@ -8,14 +8,13 @@ log = core.getLogger()
 
 
 class SwitchController:
-    TCAM = {}
-
     def __init__(self, dpid, connection, main_controller):
         self.dpid = dpid
         self.connection = connection
         # El SwitchController se agrega como handler de los eventos del switch
         self.connection.addListeners(self)
         self.main_controller = main_controller
+        self.TCAM = self.main_controller.TCAM
 
     # TODO: probar o borrar esto
     # def broadcast(self):
@@ -58,8 +57,8 @@ class SwitchController:
         msg = of.ofp_flow_mod()
         msg.data = event.ofp
         msg.buffer_id = event.ofp.buffer_id
-        msg.idle_timeout = 100
-        msg.hard_timeout = 300
+        msg.idle_timeout = 10
+        msg.hard_timeout = 30
 
         msg.match.dl_src = _10tupla.eth_src
         msg.match.dl_dst = _10tupla.eth_dst
@@ -72,6 +71,26 @@ class SwitchController:
 
         msg.actions.append(of.ofp_action_output(port=port_out))
         event.connection.send(msg)
+
+    def handle_new_flow(self, packet, event, _10tupla):
+        paths = list(nx.all_shortest_paths(
+            self.main_controller.topology,
+            packet.src.to_str(),
+            packet.dst.to_str()
+        ))
+        paths = [path for path in paths if self.dpid in path]
+        path = choice(paths)
+        self.update_switch_table(path, event, _10tupla)
+        self.TCAM[_10tupla] = path
+
+    def is_link_up(self, _10tupla):
+        path = self.TCAM[_10tupla]
+        try:
+            self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
+            return True
+        except KeyError:
+            # se corto el link
+            return False
 
     def _handle_PacketIn(self, event):
         """
@@ -87,17 +106,10 @@ class SwitchController:
 
         if _10tupla not in self.TCAM.keys():
             try:
-                paths = list(nx.all_shortest_paths(
-                    self.main_controller.topology,
-                    packet.src.to_str(),
-                    packet.dst.to_str()
-                ))
-                paths = [path for path in paths if self.dpid in path]
-                path = choice(paths)
-                self.update_switch_table(path, event, _10tupla)
-                self.TCAM[_10tupla] = path
+                self.handle_new_flow(packet, event, _10tupla)
             except nx.NetworkXNoPath:
                 pass
-        else:
-            path = self.TCAM[_10tupla]
+        elif _10tupla not in self.TCAM.keys() and self.is_link_up(_10Tuple):
             self.update_switch_table(path, event, _10tupla)
+        else:
+            self.handle_new_flow(packet, event, _10tupla)
