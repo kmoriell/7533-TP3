@@ -15,7 +15,6 @@ class Controller:
     MAX_UDP_PACKETS = 10  # pkts/seg
     TIMER = 10  # segs
     paquetes_por_destino = dict()
-    TCAM = {}
 
     def __init__(self):
         self.connections = set()

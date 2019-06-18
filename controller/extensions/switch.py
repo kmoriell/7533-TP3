@@ -8,13 +8,14 @@ log = core.getLogger()
 
 
 class SwitchController:
+    TCAM = {}
+
     def __init__(self, dpid, connection, main_controller):
         self.dpid = dpid
         self.connection = connection
         # El SwitchController se agrega como handler de los eventos del switch
         self.connection.addListeners(self)
         self.main_controller = main_controller
-        self.TCAM = self.main_controller.TCAM
 
     # TODO: probar o borrar esto
     # def broadcast(self):
@@ -72,20 +73,9 @@ class SwitchController:
         msg.actions.append(of.ofp_action_output(port=port_out))
         event.connection.send(msg)
 
-    def handle_new_flow(self, packet, event, _10tupla):
-        paths = list(nx.all_shortest_paths(
-            self.main_controller.topology,
-            packet.src.to_str(),
-            packet.dst.to_str()
-        ))
-        paths = [path for path in paths if self.dpid in path]
-        path = choice(paths)
-        self.update_switch_table(path, event, _10tupla)
-        self.TCAM[_10tupla] = path
-
     def is_link_up(self, _10tupla):
-        path = self.TCAM[_10tupla]
         try:
+            path = self.TCAM[_10tupla]
             self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
             return True
         except KeyError:
@@ -104,12 +94,19 @@ class SwitchController:
 
         _10tupla = self.build_10_tuple(packet)
 
-        if _10tupla not in self.TCAM.keys():
+        if _10tupla not in self.TCAM.keys() or not self.is_link_up(_10Tuple):
             try:
-                self.handle_new_flow(packet, event, _10tupla)
+                paths = list(nx.all_shortest_paths(
+                    self.main_controller.topology,
+                    packet.src.to_str(),
+                    packet.dst.to_str()
+                ))
+                paths = [path for path in paths if self.dpid in path]
+                path = choice(paths)
+                self.update_switch_table(path, event, _10tupla)
+                self.TCAM[_10tupla] = path
             except nx.NetworkXNoPath:
                 pass
-        elif _10tupla not in self.TCAM.keys() and self.is_link_up(_10Tuple):
-            self.update_switch_table(path, event, _10tupla)
         else:
-            self.handle_new_flow(packet, event, _10tupla)
+            path = self.TCAM[_10tupla]
+            self.update_switch_table(path, event, _10tupla)
