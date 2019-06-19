@@ -1,10 +1,11 @@
 import networkx as nx
-import pox.openflow.libopenflow_01 as of
 from pox.core import core
 from random import choice
 from _10Tuple import _10Tuple
 
 from tcam import TCam
+
+from actions import UpdateTableAction, FireWallAction
 
 log = core.getLogger()
 
@@ -18,6 +19,7 @@ class SwitchController:
         # El SwitchController se agrega como handler de los eventos del switch
         self.connection.addListeners(self)
         self.main_controller = main_controller
+        self.actions = [FireWallAction(), UpdateTableAction()]
 
     # TODO: probar o borrar esto
     # def broadcast(self):
@@ -53,27 +55,11 @@ class SwitchController:
             log.info('unknown type: {}'.format(packet.type))
         return _10tupla
 
-    def update_switch_table(self, path, event, _10tupla):
-        # update switch table entry, and retry with the new-found information
+    def run_actions(self, path, event, _10tupla):
         port_out = self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
 
-        msg = of.ofp_flow_mod()
-        msg.data = event.ofp
-        msg.buffer_id = event.ofp.buffer_id
-        msg.idle_timeout = 10
-        msg.hard_timeout = 30
-
-        msg.match.dl_src = _10tupla.eth_src
-        msg.match.dl_dst = _10tupla.eth_dst
-        msg.match.dl_type = _10tupla.eth_type
-        msg.match.nw_src = _10tupla.ip_src
-        msg.match.nw_dst = _10tupla.ip_dst
-        msg.match.nw_proto = _10tupla.ip_proto
-        msg.match.tp_src = _10tupla.tcp_src
-        msg.match.tp_dst = _10tupla.tcp_dst
-
-        msg.actions.append(of.ofp_action_output(port=port_out))
-        event.connection.send(msg)
+        for action in self.actions:
+            action.execute(port_out=port_out, event=event, _10tupla=_10tupla)
 
     def is_link_up(self, _10tupla):
         if self.TCAM.contains(_10tupla):
@@ -102,10 +88,10 @@ class SwitchController:
                 ))
                 paths = [path for path in paths if self.dpid in path]
                 path = choice(paths)
-                self.update_switch_table(path, event, _10tupla)
+                self.run_actions(path, event, _10tupla)
                 self.TCAM.add_entry(_10tupla, path)
             except nx.NetworkXNoPath:
                 pass
         else:
             path = self.TCAM.get(_10tupla)
-            self.update_switch_table(path, event, _10tupla)
+            self.run_actions(path, event, _10tupla)
