@@ -4,11 +4,13 @@ from pox.core import core
 from random import choice
 from _10Tuple import _10Tuple
 
+from tcam import TCam
+
 log = core.getLogger()
 
 
 class SwitchController:
-    TCAM = {}
+    TCAM = TCam()
 
     def __init__(self, dpid, connection, main_controller):
         self.dpid = dpid
@@ -74,8 +76,8 @@ class SwitchController:
         event.connection.send(msg)
 
     def is_link_up(self, _10tupla):
-        if _10tupla in self.TCAM.keys():
-            path = self.TCAM[_10tupla]
+        if self.TCAM.contains(_10tupla):
+            path = self.TCAM.get(_10tupla)
             return path[path.index(self.dpid) + 1] in self.main_controller.ports[self.dpid]
         return False
 
@@ -91,7 +93,7 @@ class SwitchController:
 
         _10tupla = self.build_10_tuple(packet)
 
-        if _10tupla not in self.TCAM.keys() or not self.is_link_up(_10Tuple):
+        if not self.TCAM.contains(_10tupla) or not self.is_link_up(_10Tuple):
             try:
                 paths = list(nx.all_shortest_paths(
                     self.main_controller.topology,
@@ -101,9 +103,9 @@ class SwitchController:
                 paths = [path for path in paths if self.dpid in path]
                 path = choice(paths)
                 self.update_switch_table(path, event, _10tupla)
-                self.TCAM[_10tupla] = path
+                self.TCAM.add_entry(_10tupla, path)
             except nx.NetworkXNoPath:
                 pass
         else:
-            path = self.TCAM[_10tupla]
+            path = self.TCAM.get(_10tupla)
             self.update_switch_table(path, event, _10tupla)
