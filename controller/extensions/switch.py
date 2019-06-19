@@ -59,7 +59,7 @@ class SwitchController:
         port_out = self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
 
         next_action = self.action.next()
-        while next_action:
+        while next_action is not None:
             next_action.execute(port_out=port_out, event=event, _10tupla=_10tupla)
             next_action = next_action.next()
 
