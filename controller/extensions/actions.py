@@ -5,6 +5,17 @@ class Action:
     def execute(self, **kwargs):
         raise NotImplementedError()
 
+    def next(self):
+        raise NotImplementedError()
+
+
+class MainAction(Action):
+    def execute(self, **kwargs):
+        pass
+
+    def next(self):
+        return FireWallAction()
+
 
 class UpdateTableAction(Action):
     def execute(self, **kwargs):
@@ -31,7 +42,13 @@ class UpdateTableAction(Action):
         msg.actions.append(of.ofp_action_output(port=port_out))
         event.connection.send(msg)
 
+    def next(self):
+        return None
+
 
 class FireWallAction(Action):
     def execute(self, **kwargs):
         pass
+
+    def next(self):
+        return UpdateTableAction()

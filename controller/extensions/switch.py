@@ -5,7 +5,7 @@ from _10Tuple import _10Tuple
 
 from tcam import TCam
 
-from actions import UpdateTableAction, FireWallAction
+from actions import MainAction
 
 log = core.getLogger()
 
@@ -19,7 +19,7 @@ class SwitchController:
         # El SwitchController se agrega como handler de los eventos del switch
         self.connection.addListeners(self)
         self.main_controller = main_controller
-        self.actions = [FireWallAction(), UpdateTableAction()]
+        self.action = MainAction()
 
     # TODO: probar o borrar esto
     # def broadcast(self):
@@ -58,8 +58,10 @@ class SwitchController:
     def run_actions(self, path, event, _10tupla):
         port_out = self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
 
-        for action in self.actions:
-            action.execute(port_out=port_out, event=event, _10tupla=_10tupla)
+        next_action = self.action.next()
+        while next_action:
+            next_action.execute(port_out=port_out, event=event, _10tupla=_10tupla)
+            next_action = next_action.next()
 
     def is_link_up(self, _10tupla):
         if self.TCAM.contains(_10tupla):
