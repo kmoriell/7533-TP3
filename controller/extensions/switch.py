@@ -74,13 +74,10 @@ class SwitchController:
         event.connection.send(msg)
 
     def is_link_up(self, _10tupla):
-        try:
+        if _10tupla in self.TCAM.keys():
             path = self.TCAM[_10tupla]
-            self.main_controller.ports[self.dpid][path[path.index(self.dpid) + 1]]
-            return True
-        except KeyError:
-            # se corto el link
-            return False
+            return path[path.index(self.dpid) + 1] in self.main_controller.ports[self.dpid]
+        return False
 
     def _handle_PacketIn(self, event):
         """
