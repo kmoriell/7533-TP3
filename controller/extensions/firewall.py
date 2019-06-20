@@ -5,11 +5,10 @@ import pox.openflow.libopenflow_01 as of
 
 log = core.getLogger()
 
-# TODO: no esta desbloqueando una vez aplicado el blackhole
 
 class FireWall:
     MAX_UDP_PACKETS = 10
-    PROTOCOLS_TO_BLOCK = [pkt.ipv4.UDP_PROTOCOL, pkt.ipv4.ICMP_PROTOCOL]
+    PROTOCOLS_TO_BLOCK = [pkt.ipv4.UDP_PROTOCOL, pkt.ipv4.ICMP_PROTOCOL]  # TODO: sacar ICMP, es solo para probar con ping
     CHECK_TIME = 20
 
     def __init__(self):
@@ -20,6 +19,7 @@ class FireWall:
             "FlowStatsReceived",
             self._handle_flowstats_received
         )
+        self.reports_by_sw = {}
 
     def _handle_flowstats_received(self, event):
         """
@@ -29,18 +29,37 @@ class FireWall:
         log.info("Checking for DoS attack")
         self.packets_by_destiny = {}
         for flow in event.stats:
+            dst = flow.match.nw_dst
+            dpid = event.connection.dpid
+            reports = self.reports_by_sw.get(dpid, set())
+
             if flow.match.nw_proto in self.PROTOCOLS_TO_BLOCK:
-                dst = flow.match.nw_dst
                 packets_count = self.packets_by_destiny.get(dst, 0) + flow.packet_count
                 self.packets_by_destiny[dst] = packets_count
                 log.info("Packet count to {}: {}".format(dst, self.packets_by_destiny[dst]))
                 self.apply_blackholing()
+                reports.add(dst)
+            else:
+                if dst in reports:
+                    reports.remove(dst)
+
+            self.reports_by_sw[dpid] = reports
+
+        self.clear_blocked()
 
     def apply_blackholing(self):
         for dst, pkt_count in self.packets_by_destiny.items():
             if pkt_count >= self.MAX_UDP_PACKETS:
                 self.block_dst(dst)
             else:
+                self.unblock_dst(dst)
+
+    def clear_blocked(self):
+        """
+        Hasta que los sw que reportaron paquetes UDP a un host, no reporten mas, no se desbloquea el destino
+        """
+        for dst in self.blocked:
+            if not [reports for reports in self.reports_by_sw.values() if dst in reports]:
                 self.unblock_dst(dst)
 
     def unblock_dst(self, dst):
