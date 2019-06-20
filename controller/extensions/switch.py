@@ -3,7 +3,6 @@ import pox.openflow.libopenflow_01 as of
 from pox.core import core
 from random import choice
 from _10Tuple import _10Tuple
-
 from tcam import TCam
 
 log = core.getLogger()
@@ -71,6 +70,7 @@ class SwitchController:
         msg.match.nw_proto = _10tupla.ip_proto
         msg.match.tp_src = _10tupla.tcp_src
         msg.match.tp_dst = _10tupla.tcp_dst
+        msg.priority = of.OFP_DEFAULT_PRIORITY
 
         msg.actions.append(of.ofp_action_output(port=port_out))
         event.connection.send(msg)

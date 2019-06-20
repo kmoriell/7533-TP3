@@ -5,7 +5,7 @@ import pox.openflow.spanning_tree
 from pox.core import core
 from pox.host_tracker.host_tracker import host_tracker
 from pox.lib.util import dpid_to_str
-
+from extensions.firewall import FireWall
 from extensions.switch import SwitchController
 
 log = core.getLogger()
@@ -22,6 +22,8 @@ class Controller:
         self.topology = nx.Graph()
         self.ports = {}
         self.host_tracker = host_tracker()
+        self.firewall = FireWall()
+        self.firewall.start()
 
         # Esperando que los modulos openflow y openflow_discovery esten listos
         core.call_when_ready(self.startup, ('openflow', 'openflow_discovery'))
