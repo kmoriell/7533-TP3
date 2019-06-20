@@ -23,8 +23,8 @@ class FireWall:
 
     def _handle_flowstats_received(self, event):
         """
-        Esta funciona se llama cada CHECK_TIME segundos. Si en ese lapso, la cantidad de paquetes supera
-        MAX_UDP_PACKETS se aplica blackhole, sino si estaba bloqueada se desbloquea
+        Esta funcion se llama cada CHECK_TIME segundos. Si en ese lapso, la cantidad de paquetes supera
+        MAX_UDP_PACKETS se aplica blackhole, sino, si estaba bloqueada se desbloquea
         """
         log.info("Checking for DoS attack")
         self.packets_by_destiny = {}
