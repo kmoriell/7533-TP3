@@ -1,5 +1,5 @@
 import pox.openflow.libopenflow_01 as of
-from threading import Timer
+from datetime import datetime
 from pox.core import core
 
 log = core.getLogger()
@@ -16,6 +16,7 @@ class Action:
 class MainAction(Action):
     def __init__(self):
         self.next_action = FireWallAction()
+        log.info("main action created")
 
     def execute(self, **kwargs):
         pass
@@ -34,8 +35,8 @@ class UpdateTableAction(Action):
         msg = of.ofp_flow_mod()
         msg.data = event.ofp
         msg.buffer_id = event.ofp.buffer_id
-        msg.idle_timeout = 10
-        msg.hard_timeout = 30
+        msg.idle_timeout = 5
+        msg.hard_timeout = 10
 
         msg.match.dl_src = _10tupla.eth_src
         msg.match.dl_dst = _10tupla.eth_dst
@@ -54,40 +55,45 @@ class UpdateTableAction(Action):
 
 
 class FireWallAction(Action):
-    MAX_UDP_PACKETS = 10  # pkt/sec
-    TIMER = 100  # segs
+    MAX_UDP_PACKETS = 3  # pkt/sec
+    TIMEOUT = 30  # segs
 
     def __init__(self):
         self.should_drop = False
         self.packets_by_destiny = {}
+        self.last_check = datetime.now()
 
     def execute(self, **kwargs):
-        # TODO: no esta expirando el timer
         # TODO: esto nose si esta bien, ya que una vez instruido el sw sobre como forwardear un pkt,
         #  hasta que eso no expira no le vuelve a preguntar al controller, por lo que el pkt/sec no es "real"
         event = kwargs["event"]
 
         frame = event.parsed
 
+        self.check_reset()
+
         if frame.type == frame.IP_TYPE:
             packet = frame.payload
             if packet.protocol == packet.ICMP_PROTOCOL or packet.protocol == packet.UDP_PROTOCOL:
-                if not packet.dstip in self.packets_by_destiny.keys():
-                    self.packets_by_destiny[packet.dstip] = 0
-                self.packets_by_destiny[packet.dstip] += 1
-                log.info(self.packets_by_destiny[packet.dstip])
+                count = self.packets_by_destiny.get(packet.dstip, 0)
+                self.packets_by_destiny[packet.dstip] = count + 1
+                log.info("Cantidad de paquetes a {}: {}".format(packet.dstip, self.packets_by_destiny[packet.dstip]))
 
                 if self.packets_by_destiny[packet.dstip] >= self.MAX_UDP_PACKETS:
                     log.info("Paquete bloqueado desde " + str(packet.dstip))
                     self.should_drop = True
                     event.halt = True
-                Timer(self.TIMER, self.reset)
 
     def next(self):
         return DropAction() if self.should_drop else UpdateTableAction()
 
-    def reset(self):
-        self.packets_by_destiny.clear()
+    def check_reset(self):
+        log.info("time since last check: {}".format((datetime.now() - self.last_check).total_seconds()))
+        if (datetime.now() - self.last_check).total_seconds() > self.TIMEOUT:
+            log.info("Desactivando blackhole")
+            self.packets_by_destiny.clear()
+            self.should_drop = False
+        self.last_check = datetime.now()
 
 
 class DropAction(Action):
