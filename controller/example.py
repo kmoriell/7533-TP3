@@ -8,6 +8,8 @@ from pox.lib.util import dpid_to_str
 from extensions.firewall import FireWall
 from extensions.switch import SwitchController
 
+from extensions.ecmp import ECMPTable
+
 log = core.getLogger()
 
 
@@ -24,6 +26,7 @@ class Controller:
         self.host_tracker = host_tracker()
         self.firewall = FireWall()
         self.firewall.start()
+        self.ecmp_table = ECMPTable()
 
         # Esperando que los modulos openflow y openflow_discovery esten listos
         core.call_when_ready(self.startup, ('openflow', 'openflow_discovery'))
@@ -123,6 +126,9 @@ class Controller:
             self.handle_link_up(link)
         elif event.removed:
             self.handle_link_down(link)
+
+    def get_port_for(self, packet, dpid, ports):
+        return self.ecmp_table.get_port_for(packet, ports, dpid)
 
 def launch():
     # Inicializando el modulo openflow_discovery

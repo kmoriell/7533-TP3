@@ -101,7 +101,7 @@ class SwitchController:
                     packet.dst.to_str()
                 ))
                 paths = [path for path in paths if self.dpid in path]
-                path = choice(paths)
+                path = self.get_path_applying_ecmp(paths, packet)
                 self.update_switch_table(path, event, _10tupla)
                 self.TCAM.add_entry(_10tupla, path)
             except nx.NetworkXNoPath:
@@ -109,3 +109,21 @@ class SwitchController:
         else:
             path = self.TCAM.get(_10tupla)
             self.update_switch_table(path, event, _10tupla)
+
+    def get_path_applying_ecmp(self, paths, packet):
+        possible_next_hops = set()
+        for path in paths:
+            possible_next_hops.add(path[path.index(self.dpid) + 1])
+
+        log.info("Possible next hops for {}: going from {} to {}: {}".format(self.dpid, paths[0][0], paths[0][-1], possible_next_hops))
+
+        possible_ports_by_hop = {}
+        for next_hop in possible_next_hops:
+            port = self.main_controller.ports[self.dpid][next_hop]
+            possible_ports_by_hop[port] = next_hop
+
+        selected_port = self.main_controller.get_port_for(packet, self.dpid, possible_ports_by_hop.keys())
+        next_hop = possible_ports_by_hop[selected_port]
+        log.info("Selected next hop: {}".format(next_hop))
+
+        return [path for path in paths if next_hop in path][0]
