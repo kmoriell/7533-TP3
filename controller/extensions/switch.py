@@ -46,8 +46,8 @@ class SwitchController:
             _10tupla.ip_proto = protocol
             if protocol == ip.TCP_PROTOCOL:
                 tcp = ip.payload
-                _10tupla.ip_src = tcp.srcport
-                _10tupla.ip_dst = tcp.dstport
+                _10tupla.tcp_src = tcp.srcport
+                _10tupla.tcp_dst = tcp.dstport
         else:
             log.info('unknown type: {}'.format(packet.type))
         return _10tupla
