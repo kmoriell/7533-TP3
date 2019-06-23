@@ -1,7 +1,6 @@
 import networkx as nx
 import pox.openflow.libopenflow_01 as of
 from pox.core import core
-from random import choice
 from _10Tuple import _10Tuple
 from tcam import TCam
 
@@ -17,16 +16,6 @@ class SwitchController:
         # El SwitchController se agrega como handler de los eventos del switch
         self.connection.addListeners(self)
         self.main_controller = main_controller
-
-    # TODO: probar o borrar esto
-    # def broadcast(self):
-    #     log.info("Broadcasting packet")
-    #     msg = of.ofp.packet_out()
-    #     msg.buffer_id = self.event.ofp.buffer_id
-    #     msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
-    #     msg.data = self.event.ofp
-    #     msg.in_port = self.event.port
-    #     self.event.connection.send(msg)
 
     def build_10_tuple(self, packet):
         _10tupla = _10Tuple()

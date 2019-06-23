@@ -59,19 +59,6 @@ class Controller:
         destino que excedan un limite predefinido por unidad de tiempo.
         """
         log.info("Nuevo paquete recibido")
-        # frame = event.parsed
-        #
-        # if frame.type == frame.IP_TYPE:
-        #     packet = frame.payload
-        #     if packet.protocol == packet.ICMP_PROTOCOL or packet.protocol == packet.UDP_PROTOCOL:
-        #         if not packet.dstip in self.paquetes_por_destino.keys():
-        #             self.paquetes_por_destino[packet.dstip] = 0
-        #         self.paquetes_por_destino[packet.dstip] += 1
-        #
-        #         if self.paquetes_por_destino[packet.dstip] >= self.MAX_UDP_PACKETS:
-        #             # log.info("Paquete bloqueado desde " + str(packet.dstip))
-        #             event.halt = True
-        #         Timer(self.TIMER, self.reiniciar_bloqueos)
 
         self.host_tracker._handle_openflow_PacketIn(event)
 

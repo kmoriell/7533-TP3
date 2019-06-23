@@ -8,7 +8,7 @@ log = core.getLogger()
 
 class FireWall:
     MAX_UDP_PACKETS = 10
-    PROTOCOLS_TO_BLOCK = [pkt.ipv4.UDP_PROTOCOL, pkt.ipv4.ICMP_PROTOCOL]  # TODO: sacar ICMP, es solo para probar con ping
+    PROTOCOLS_TO_BLOCK = [pkt.ipv4.UDP_PROTOCOL]
     CHECK_TIME = 20
 
     def __init__(self):
